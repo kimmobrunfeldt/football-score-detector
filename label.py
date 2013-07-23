@@ -1,3 +1,5 @@
+
+import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -9,35 +11,59 @@ from skimage.morphology import label, closing, square
 from skimage.measure import regionprops
 
 
-image = Image.open('test.jpg').convert('L') # Grayscale
-image = np.array(image, dtype=float)
+def find_regions(image, min_area=10):
+    """Finds regions from image which is numpy array.
 
-# apply threshold
-thresh = threshold_otsu(image)
-bw = closing(image > thresh, square(3))
+    min_area: Minimum region area that is counted as region
 
-# remove artifacts connected to image border
-cleared = bw.copy()
-clear_border(cleared)
+    Return format:
+    [
+        {'area': area, 'box': (topLeft, bottomLeft, bottomRight, topRight)}
+        ...
+    ]
+    """
+    thresh = threshold_otsu(image)
+    bw = closing(image > thresh, square(3))
 
-# label image regions
-label_image = label(cleared)
-borders = np.logical_xor(bw, cleared)
-label_image[borders] = -1
+    # remove artifacts connected to image border
+    cleared = bw.copy()
+    clear_border(cleared)
 
-fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(6, 6))
-ax.imshow(label_image, cmap='jet')
+    # label image regions
+    label_image = label(cleared)
+    borders = np.logical_xor(bw, cleared)
+    label_image[borders] = -1
 
-for region in regionprops(label_image, ['Area', 'BoundingBox']):
+    regions = []
 
-    # skip small images
-    if region['Area'] < 100:
-        continue
+    for region in regionprops(label_image, ['Area', 'BoundingBox']):
 
-    # draw rectangle around segmented coins
-    minr, minc, maxr, maxc = region['BoundingBox']
+        # skip small regions
+        if region['Area'] >= min_area:
+            regions.append({'area': region['Area'], 'box': region['BoundingBox']})
+
+    return regions
+
+
+def main():
+    image = Image.open('test2.jpg').convert('L')  # Grayscale
+    im = np.array(image, dtype=int)
+
+    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(6, 6))
+    ax.imshow(Image.open('test2.jpg').convert('RGB'))
+
+    regions = find_regions(im)
+    regions.sort()
+
+    minr, minc, maxr, maxc = regions[-1]['box']
     rect = mpatches.Rectangle((minc, minr), maxc - minc, maxr - minr,
                               fill=False, edgecolor='red', linewidth=2)
     ax.add_patch(rect)
 
-plt.show()
+    plt.show()
+
+
+if __name__ == '__main__':
+    main()
+
+
