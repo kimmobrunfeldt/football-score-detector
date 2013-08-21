@@ -1,3 +1,7 @@
+"""
+Needed packages on ubuntu: pytpython-numpy python-scipy
+"""
+
 import sys
 import math
 import itertools
@@ -5,11 +9,7 @@ import heapq
 
 import numpy as np
 import scipy.ndimage as ndimage
-import skimage.filter
 from PIL import Image
-import skimage
-import matplotlib.pyplot as plt
-from skimage.morphology import label, closing, square
 import cv2
 
 
@@ -176,7 +176,8 @@ def straighten_table(image):
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     bw_image = find_blue(hsv_image)
 
-    non_zero_pixels = cv2.findNonZero(bw_image)
+    np_nonzero = bw_image.nonzero()
+    non_zero_pixels = np.array(zip(np_nonzero[0], np_nonzero[1]))
 
     rect = cv2.minAreaRect(non_zero_pixels)
     precise_corners = cv2.cv.BoxPoints(rect)
@@ -247,10 +248,7 @@ def draw_points(image, points):
     return im
 
 
-def main():
-    file_name = sys.argv[1]
-    image = Image.open(file_name).convert('RGB')
-
+def get_score(image):
     new_size = (image.size[0] * 2, image.size[1] * 2)
     big = Image.new('RGB', new_size)
     big.paste(image, image.size)
@@ -280,24 +278,36 @@ def main():
         points += [(x, y) for x, y in corners]
 
         im = draw_points(rotated_image, points)
-        cv2.imwrite('debug.jpg', im)
+        cv2.imwrite('debug/debug.jpg', im)
 
     score1_crop, score2_crop = crop_boxes(rotated_image, score_boxes)
 
     if DEBUG:
-        cv2.imwrite('crop1.jpg', score1_crop)
-        cv2.imwrite('crop2.jpg', score2_crop)
+        cv2.imwrite('debug/crop1.jpg', score1_crop)
+        cv2.imwrite('debug/crop2.jpg', score2_crop)
 
     image = Image.fromarray(score2_crop).convert('L')
     image = np.array(image, dtype=int)
 
     # Threshold
     T = 150
-    print 'blue score:', find_score_from_image(image > T)
+    blue_score = find_score_from_image(image > T)
 
     bw_image = find_orange(score1_crop)
-    cv2.imwrite('bw.jpg', bw_image)
-    print 'white score:', find_score_from_image(bw_image)
+
+    if DEBUG:
+        cv2.imwrite('debug/bw.jpg', bw_image)
+    white_score = find_score_from_image(bw_image)
+
+    return blue_score, white_score
+
+
+def main():
+    file_name = sys.argv[1]
+    image = Image.open(file_name).convert('RGB')
+    blue, white = get_score(image)
+    print 'Blue    White'
+    print '%s    -  %s' % (blue, white)
 
 
 if __name__ == '__main__':
