@@ -284,8 +284,9 @@ def main():
 
     score1_crop, score2_crop = crop_boxes(rotated_image, score_boxes)
 
-    cv2.imwrite('crop1.jpg', score1_crop)
-    cv2.imwrite('crop2.jpg', score2_crop)
+    if DEBUG:
+        cv2.imwrite('crop1.jpg', score1_crop)
+        cv2.imwrite('crop2.jpg', score2_crop)
 
     image = Image.fromarray(score2_crop).convert('L')
     image = np.array(image, dtype=int)
