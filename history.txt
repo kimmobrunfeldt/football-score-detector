@@ -23,6 +23,9 @@ That did not work if the table was too straight because upper most pixel
 
 - This leads to pretty solid table end detection and is fast because internal functions
 
+- next challenge: how to get position of score dots?
+ try: half of corner dots, and half again
+
 
 
 

@@ -13,6 +13,7 @@ import matplotlib.patches as mpatches
 import cv2
 
 from skimage import data
+from scipy import ndimage
 from skimage.filter import threshold_otsu
 from skimage.segmentation import clear_border
 from skimage.morphology import label, closing, square
@@ -30,7 +31,8 @@ BLUE_RANGE_MAX = np.array([130, 255, 255], np.uint8)
 
 
 
-def coordinate_sort_key(p):
+
+def distance_between_points(p):
     """Takes tuple p which contains two points and returns the difference
     between them. p format: ((x1, y1), (x2, y2))
     """
@@ -41,7 +43,7 @@ def find_table_ends(points):
     """Find two shortest lines between points. These two lines are the ends
     of the table."""
     combinations = itertools.combinations(points, 2)
-    ends = heapq.nsmallest(2, combinations, key=coordinate_sort_key)
+    ends = heapq.nsmallest(2, combinations, key=distance_between_points)
     return ends
 
 
@@ -82,38 +84,89 @@ def calculate_score_box(middle_a, middle_b, addition):
     return (middle_b, middle_a, box_a, box_b)
 
 
+def middle_distance_between_score_dots(points):
+
+    distances = []
+    for i, point in enumerate(points[:-1]):
+        distances.append(distance_between_points((point, points[i + 1])))
+
+    return float(sum(distances)) / len(distances)
+
+
+def find_score(points):
+    """Returns the score from points."""
+    points.sort()
+    middle_distance = middle_distance_between_score_dots(points)
+
+    score = 0
+    for i, point in enumerate(points[:-1]):
+        if distance_between_points((point, points[i + 1])) > middle_distance:
+            break
+
+        score += 1
+    return score
+
+
 def threshold(image):
-    thresh = thresh = skimage.filter.threshold_otsu(image)
+    thresh = skimage.filter.threshold_otsu(image)
+    print thresh
     bw = image > thresh
     return bw
 
 
+def find_score_from_image(image):
+    # Threshold
+    T = 25
+
+    # find connected components
+    labeled, nr_objects = ndimage.label(image > T)
+
+
+    slices = ndimage.find_objects(labeled)
+
+    # Center coordinates of objects
+    objects = []
+    for sl in slices:
+        dy, dx = sl[0:2]
+        x_center = (dx.start + dx.stop - 1)/2
+        y_center = (dy.start + dy.stop - 1)/2
+
+        objects.append((x_center, y_center))
+
+    return find_score(objects)
+
+
 def main():
     file_name = sys.argv[1]
-    image = cv2.imread(file_name)
-    bw = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    dna = Image.open(file_name).convert('L')
+    dna = np.array(dna, dtype=int)
 
-    label_image = label(image)
-    borders = np.logical_xor(bw, image)
-    label_image[borders] = -1
-    image_label_overlay = skimage.color.label2rgb(label_image, image=image)
+    # Threshold
+    T = 100
 
-    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(6, 6))
-    ax.imshow(image_label_overlay)
+    t = dna > T
 
-    for region in regionprops(label_image, ['Area', 'BoundingBox']):
+    scipy.misc.imsave('result.png', t)
 
-        # skip small images
-        if region['Area'] < 100:
-            continue
 
-        # draw rectangle around segmented coins
-        minr, minc, maxr, maxc = region['BoundingBox']
-        rect = mpatches.Rectangle((minc, minr), maxc - minc, maxr - minr,
-                                  fill=False, edgecolor='red', linewidth=2)
-        ax.add_patch(rect)
+    # find connected components
+    labeled, nr_objects = ndimage.label(dna > T)
+    slices = ndimage.find_objects(labeled)
 
-    plt.show()
+    # Center coordinates of objects
+    objects = []
+    for dy, dx in slices:
+        x_center = (dx.start + dx.stop - 1)/2
+        y_center = (dy.start + dy.stop - 1)/2
+
+        objects.append((x_center, y_center))
+
+    print 'score is', find_score(objects)
+
+    plt.imshow(dna)
+    plt.plot([x[0] for x in objects], [x[1] for x in objects], 'ro')
+    plt.savefig('result2.png', bbox_inches = 'tight')
+
 
 if __name__ == '__main__':
     main()
