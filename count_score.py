@@ -29,6 +29,10 @@ SCORE_BLOCK_LENGTH = 0.045
 SCORE_INNER_MARGIN = 0.015
 SCORE_TO_MIDDLE_MARGIN = 0.17
 
+# Area limits for found score blocks
+MIN_SCORE_AREA = 15
+MAX_SCORE_AREA = 120
+
 # http://stackoverflow.com/questions/10948589/choosing-correct-hsv-values-for-opencv-thresholding-with-inranges
 
 # The HSV value range that is used to get blue color of the image
@@ -39,6 +43,11 @@ ORANGE_RANGE_MIN = np.array([9, 40, 40], np.uint8)
 ORANGE_RANGE_MAX = np.array([24, 255, 255], np.uint8)
 
 
+def flip(coord):
+    a, b = coord
+    return b, a
+
+
 def distance_between_points(p):
     """Takes tuple p which contains two points and returns the difference
     between them. p format: ((x1, y1), (x2, y2))
@@ -46,8 +55,16 @@ def distance_between_points(p):
     return math.sqrt((p[1][0] - p[0][0])**2 + (p[1][1] - p[0][1])**2)
 
 
-def middle_distance_between_score_dots(points):
+def average_distance_between_score_dots(points):
+    """Calculates the average distance between given points.
 
+    For example with a, b and c points:
+
+          d1    d2
+        a----b------c
+
+    Would return: (d1 + d2) / 2
+    """
     distances = []
     for i, point in enumerate(points[:-1]):
         distances.append(distance_between_points((point, points[i + 1])))
@@ -57,8 +74,9 @@ def middle_distance_between_score_dots(points):
 
 def find_score(points):
     """Returns the score from points."""
+    # Put points to left-to-right order(ordered by x coordinate)
     points.sort()
-    middle_distance = middle_distance_between_score_dots(points)
+    middle_distance = average_distance_between_score_dots(points)
 
     score = 0
     for i, point in enumerate(points[:-1]):
@@ -70,16 +88,26 @@ def find_score(points):
 
 
 def find_score_from_image(image):
-    """Find score from black and white image."""
-    # find connected components
+    """Find score from black and white image.
+
+    Image should contain 12 white dots placed from left to right.
+    Two outermost dots are not counted, they keep the score blocks in place.
+    """
+    # Find connected components
     labeled, nr_objects = ndimage.label(image)
     slices = ndimage.find_objects(labeled)
 
     # Center coordinates of objects
     objects = []
     for dy, dx in slices:
-        x_center = (dx.start + dx.stop - 1)/2
-        y_center = (dy.start + dy.stop - 1)/2
+        # Skip too small or big regions
+        area = abs((dx.stop - dx.start) * (dy.stop - dy.start))
+        print area
+        if area < MIN_SCORE_AREA or area > MAX_SCORE_AREA:
+            continue
+
+        x_center = (dx.start + dx.stop - 1) / 2
+        y_center = (dy.start + dy.stop - 1) / 2
 
         objects.append((x_center, y_center))
 
@@ -87,18 +115,29 @@ def find_score_from_image(image):
 
 
 def find_lower_long_side(corners):
-    """From corner points, finds the lowest side of the rectangle."""
+    """From corner points, finds the lowest long side of a rectangle.
+
+    For example:
+
+            d
+           / \
+          /   c          a-----d
+         a   /     and   |     |
+          \ /            b-----c
+           b
+
+    Both cases would return points b and c.
+    """
     sorted_by_y = sorted([(y, x) for x, y in corners])
     lowest = sorted_by_y[-1]
     distance_a = distance_between_points((lowest, sorted_by_y[1]))
     distance_b = distance_between_points((lowest, sorted_by_y[2]))
-    if distance_a > distance_b:
-        return lowest, sorted_by_y[1]
+
+    point_a = lowest
+    point_b = sorted_by_y[1] if distance_a > distance_b else sorted_by_y[2]
 
     # Flip back to x, y format, because they were sorted based on y
-    point_a = (lowest[1], lowest[0])
-    point_b = (sorted_by_y[2][1], sorted_by_y[2][0])
-    return point_a, point_b
+    return flip(point_a), flip(point_b)
 
 
 def calculate_line_rotation(point_a, point_b):
@@ -190,12 +229,17 @@ def rad_to_deg(r):
 
 
 def straighten_table(image):
-    # Find table corners
+    """Rotates a given image so that the football table is straight.
+
+    In English:
+        - Find the table and determine its corners
+        - From corners, find lower long side of the table
+        - Calculate rotation from the line and rotate the image
+    """
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     bw_image = find_blue(hsv_image)
 
-    np_nonzero = bw_image.nonzero()
-    non_zero_pixels = np.array(zip(np_nonzero[0], np_nonzero[1]))
+    non_zero_pixels = cv2.findNonZero(bw_image)
 
     rect = cv2.minAreaRect(non_zero_pixels)
     precise_corners = cv2.cv.BoxPoints(rect)
@@ -211,7 +255,7 @@ def straighten_table(image):
 
 
 def find_score_boxes(corners):
-    """Finds the bounding boxes of table's ends."""
+    """Finds the bounding boxes for scores based on table's corners."""
     ends = find_table_ends(corners)
 
     end1, end2 = ends
@@ -239,7 +283,8 @@ def find_score_boxes(corners):
 
 def crop_boxes(image, boxes):
     """Crops given boxes from image, boxes contain all box corners, where
-    first is top left and third is bottom right."""
+    first is top left and third is bottom right.
+    """
     crops = []
 
     for box in boxes:
@@ -276,6 +321,9 @@ def draw_points(image, points):
 
 
 def get_score(image):
+    # Create new bigger canvas where the table image can be rotated.
+    # This is needed because otherwise the table might be rotated outside
+    # of image bounds.
     new_size = (image.size[0] * 2, image.size[1] * 2)
     big = Image.new('RGB', new_size)
 
@@ -284,13 +332,17 @@ def get_score(image):
     big.paste(image, (int(image.size[0] / 1.5), image.size[1] / 2))
 
     array = np.array(big)
-    # Convert RGB to BGR
+    # Convert RGB to BGR, because OpenCV uses BGR
     cv_image = array[:, :, ::-1].copy()
 
     rotated_image = straighten_table(cv_image)
 
     # Find table corners
     bw_image = find_blue(rotated_image)
+
+    if DEBUG:
+        cv2.imwrite('debug/found_blue.jpg', bw_image)
+
     non_zero_pixels = cv2.findNonZero(bw_image)
     rect = cv2.minAreaRect(non_zero_pixels)
     precise_corners = cv2.cv.BoxPoints(rect)
