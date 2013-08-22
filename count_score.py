@@ -1,14 +1,20 @@
 """
-Needed packages on ubuntu: pytpython-numpy python-scipy
+Dependencies:
+
+- OpenCV >= 2.4.4
+- Numpy
+- Scipy
 """
 
 import sys
 import math
 import itertools
 import heapq
+import urllib
 
 import numpy as np
 import scipy.ndimage as ndimage
+import scipy.misc
 from PIL import Image
 import cv2
 
@@ -17,7 +23,11 @@ DEBUG = True
 
 # Percentage of length of the table. This is used to determine box around
 # score blocks
-SCORE_BLOCK_LENGTH = 0.06
+SCORE_BLOCK_LENGTH = 0.045
+
+# These affect how tightly the scores are boxed
+SCORE_INNER_MARGIN = 0.015
+SCORE_TO_MIDDLE_MARGIN = 0.17
 
 # http://stackoverflow.com/questions/10948589/choosing-correct-hsv-values-for-opencv-thresholding-with-inranges
 
@@ -25,8 +35,8 @@ SCORE_BLOCK_LENGTH = 0.06
 BLUE_RANGE_MIN = np.array([80, 70, 70], np.uint8)
 BLUE_RANGE_MAX = np.array([130, 255, 255], np.uint8)
 
-ORANGE_RANGE_MIN = np.array([18, 70, 70], np.uint8)
-ORANGE_RANGE_MAX = np.array([40, 255, 255], np.uint8)
+ORANGE_RANGE_MIN = np.array([9, 40, 40], np.uint8)
+ORANGE_RANGE_MAX = np.array([24, 255, 255], np.uint8)
 
 
 def distance_between_points(p):
@@ -103,6 +113,7 @@ def find_table_ends(points):
     of the table."""
     combinations = itertools.combinations(points, 2)
     ends = heapq.nsmallest(2, combinations, key=distance_between_points)
+    ends.sort()
     return ends
 
 
@@ -130,15 +141,22 @@ def table_end_middles(end):
     middle = middle_point(end[0], end[1])
     middle_a = middle_point(end[0], middle)
     middle_b = middle_point(end[1], middle)
+
+    add1 = calculate_coordinate_addition(middle_a, middle, SCORE_TO_MIDDLE_MARGIN)
+    add2 = calculate_coordinate_addition(middle_b, middle, SCORE_TO_MIDDLE_MARGIN)
+
+    middle_a = (middle_a[0] + add1[0], middle_a[1] + add1[1])
+    middle_b = (middle_b[0] + add2[0], middle_b[1] + add2[1])
+
     return middle, middle_a, middle_b
 
 
-def calculate_coordinate_addition(middle1, middle2):
+def calculate_coordinate_addition(middle1, middle2, percent=SCORE_BLOCK_LENGTH):
     """Calculates the needed coordinate delta that should be added to a middle
     point so the score blocks can be cropped.
     """
-    x_diff = int((middle2[0] - middle1[0]) * SCORE_BLOCK_LENGTH)
-    y_diff = int((middle2[1] - middle1[1]) * SCORE_BLOCK_LENGTH)
+    x_diff = int((middle2[0] - middle1[0]) * percent)
+    y_diff = int((middle2[1] - middle1[1]) * percent)
     return x_diff, y_diff
 
 
@@ -200,6 +218,15 @@ def find_score_boxes(corners):
     middle1, middle1_a, middle1_b = table_end_middles(end1)
     middle2, middle2_a, middle2_b = table_end_middles(end2)
 
+    add1 = calculate_coordinate_addition(middle1, middle2, SCORE_INNER_MARGIN)
+    add2 = calculate_coordinate_addition(middle2, middle1, SCORE_INNER_MARGIN)
+
+    middle1_a = (middle1_a[0] + add1[0], middle1_a[1] + add1[1])
+    middle1_b = (middle1_b[0] + add1[0], middle1_b[1] + add1[1])
+
+    middle2_a = (middle2_a[0] + add2[0], middle2_a[1] + add2[1])
+    middle2_b = (middle2_b[0] + add2[0], middle2_b[1] + add2[1])
+
     addition1 = calculate_coordinate_addition(middle1, middle2)
     # This is basically opposite direction than addition1
     addition2 = calculate_coordinate_addition(middle2, middle1)
@@ -251,7 +278,10 @@ def draw_points(image, points):
 def get_score(image):
     new_size = (image.size[0] * 2, image.size[1] * 2)
     big = Image.new('RGB', new_size)
-    big.paste(image, image.size)
+
+    # Place the actual image in the middle of the new empty canvas
+    # The position was tested pretty much empirically
+    big.paste(image, (int(image.size[0] / 1.5), image.size[1] / 2))
 
     array = np.array(big)
     # Convert RGB to BGR
@@ -266,9 +296,14 @@ def get_score(image):
     precise_corners = cv2.cv.BoxPoints(rect)
     corners = np.int0(np.around(precise_corners))
 
-    # Find bounding boxes for scores
-    score_boxes = find_score_boxes(corners)
+    sorted_corners = [(x, y) for x, y in corners]
+    tl, br = find_crop_corners(sorted_corners)
+    sorted_corners.remove(tl)
+    sorted_corners.remove(br)
+    bl, tr = min(sorted_corners), max(sorted_corners)
 
+    # Find bounding boxes for scores
+    score_boxes = find_score_boxes([tl, bl, br, tr])
     if DEBUG:
         points = []
         for box in score_boxes:
@@ -286,28 +321,47 @@ def get_score(image):
         cv2.imwrite('debug/crop1.jpg', score1_crop)
         cv2.imwrite('debug/crop2.jpg', score2_crop)
 
+
+    # Find white block score
+    bw_image = find_orange(score1_crop)
+
+    if DEBUG:
+        cv2.imwrite('debug/bw1.jpg', bw_image)
+
+    white_score = 10 - find_score_from_image(bw_image)
+
+    # Find blue block score
     image = Image.fromarray(score2_crop).convert('L')
     image = np.array(image, dtype=int)
 
     # Threshold
-    T = 150
-    blue_score = find_score_from_image(image > T)
-
-    bw_image = find_orange(score1_crop)
-
+    T = 160
+    bw_image = image > T
     if DEBUG:
-        cv2.imwrite('debug/bw.jpg', bw_image)
-    white_score = find_score_from_image(bw_image)
+        scipy.misc.imsave('debug/bw2.jpg', bw_image)
 
-    return blue_score, white_score
+    blue_score = find_score_from_image(bw_image)
+
+    return white_score, blue_score
+
+
+def print_score(file_name):
+    image = Image.open(file_name).convert('RGB')
+    white, blue = get_score(image)
+    print 'White   Blue'
+    print '%s    -  %s' % (white, blue)
 
 
 def main():
     file_name = sys.argv[1]
-    image = Image.open(file_name).convert('RGB')
-    blue, white = get_score(image)
-    print 'Blue    White'
-    print '%s    -  %s' % (blue, white)
+
+    if file_name == 'stream':
+        while True:
+            urllib.urlretrieve('http://10.3.100.96:8080/?action=snapshot', 'stream.jpg')
+            print_score('stream.jpg')
+
+
+    print_score(file_name)
 
 
 if __name__ == '__main__':
