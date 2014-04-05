@@ -1,3 +1,5 @@
+# Football score detector
+
 - labeling algorithm
 - largest from labeling
 - rotate the image. labeling does not work.. hmmm..
