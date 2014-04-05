@@ -1,9 +1,8 @@
-"""
-Dependencies:
+"""Usage: python count_score.py <image> [--debug]
 
-- OpenCV >= 2.4.4
-- Numpy
-- Scipy
+Examples:
+    python count_score.py testdata/real.jpg
+    python count_score.py --debug testdata/real.jpg
 """
 
 import heapq
@@ -47,12 +46,18 @@ ORANGE_RANGE_MAX = np.array([24, 255, 255], np.uint8)
 
 
 def main():
+    argv = sys.argv[:]
+    if len(argv) < 2 or '-h' in argv or '--help' in argv:
+        print __doc__
+        sys.exit(1)
+
     level = logging.ERROR
-    if '--debug' in sys.argv:
+    if '--debug' in argv:
+        argv.remove('--debug')
         level = logging.DEBUG
     setup_logging(logging.getLogger(''), level=level)
 
-    file_name = sys.argv[1]
+    file_name = argv[1]
     print_score(file_name)
 
 
