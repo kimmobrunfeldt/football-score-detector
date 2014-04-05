@@ -6,11 +6,12 @@ Dependencies:
 - Scipy
 """
 
-import sys
-import math
-import itertools
 import heapq
-import urllib
+import itertools
+import json
+import logging
+import math
+import sys
 
 import numpy as np
 import scipy.ndimage as ndimage
@@ -30,6 +31,8 @@ SCORE_INNER_MARGIN = 0.015
 SCORE_TO_MIDDLE_MARGIN = 0.17
 
 # Area limits for found score blocks
+# The score blocks' area must be in these bounds or it is dumped as a random
+# 'trash'
 MIN_SCORE_AREA = 15
 MAX_SCORE_AREA = 120
 
@@ -41,6 +44,104 @@ BLUE_RANGE_MAX = np.array([130, 255, 255], np.uint8)
 
 ORANGE_RANGE_MIN = np.array([9, 40, 40], np.uint8)
 ORANGE_RANGE_MAX = np.array([24, 255, 255], np.uint8)
+
+
+def main():
+    level = logging.ERROR
+    if '--debug' in sys.argv:
+        level = logging.DEBUG
+    setup_logging(logging.getLogger(''), level=level)
+
+    file_name = sys.argv[1]
+    print_score(file_name)
+
+
+def print_score(file_name):
+    image = Image.open(file_name).convert('RGB')
+    score = get_score(image)
+
+    print json.dumps(score)
+
+
+def get_score(image):
+    data = {}
+
+    # Create new bigger canvas where the table image can be rotated.
+    # This is needed because otherwise the table might be rotated outside
+    # of image bounds.
+    new_size = (image.size[0] * 2, image.size[1] * 2)
+    big = Image.new('RGB', new_size)
+
+    # Place the actual image in the middle of the new empty canvas
+    # The position was tested pretty much empirically
+    big.paste(image, (int(image.size[0] / 1.5), image.size[1] / 2))
+
+    array = np.array(big)
+    # Convert RGB to BGR, because OpenCV uses BGR
+    cv_image = array[:, :, ::-1].copy()
+
+    logging.debug('Straightening table..')
+    rotated_image = straighten_table(cv_image)
+
+    # Find table corners
+    logging.debug('Finding table corners..')
+    bw_image = find_blue(rotated_image)
+
+    if DEBUG:
+        cv2.imwrite('debug/found_blue.jpg', bw_image)
+
+    non_zero_pixels = cv2.findNonZero(bw_image)
+    rect = cv2.minAreaRect(non_zero_pixels)
+    precise_corners = cv2.cv.BoxPoints(rect)
+    corners = np.int0(np.around(precise_corners))
+
+    sorted_corners = [(x, y) for x, y in corners]
+    tl, br = find_crop_corners(sorted_corners)
+    sorted_corners.remove(tl)
+    sorted_corners.remove(br)
+    bl, tr = min(sorted_corners), max(sorted_corners)
+
+    # Find bounding boxes for scores
+    logging.debug('Finding and cropping score blocks..')
+    score_boxes = find_score_boxes([tl, bl, br, tr])
+    if DEBUG:
+        points = []
+        for box in score_boxes:
+            points += box
+
+        # Add table corners
+        points += [(x, y) for x, y in corners]
+
+        im = draw_points(rotated_image, points)
+        cv2.imwrite('debug/debug.jpg', im)
+
+    score1_crop, score2_crop = crop_boxes(rotated_image, score_boxes)
+
+    if DEBUG:
+        cv2.imwrite('debug/left_score_blocks.jpg', score1_crop)
+        cv2.imwrite('debug/right_score_blocks.jpg', score2_crop)
+
+    logging.debug('Counting left score..')
+    bw_image = find_orange(score1_crop)
+
+    if DEBUG:
+        cv2.imwrite('debug/left_score_blocks_black_white.jpg', bw_image)
+
+    data['leftScore'] = 10 - find_score_from_image(bw_image)
+
+    logging.debug('Counting right score..')
+    image = Image.fromarray(score2_crop).convert('L')
+    image = np.array(image, dtype=int)
+
+    # Threshold
+    T = 160
+    bw_image = image > T
+    if DEBUG:
+        scipy.misc.imsave('debug/right_score_blocks_black_white.jpg', bw_image)
+
+    data['rightScore'] = find_score_from_image(bw_image)
+
+    return data
 
 
 def flip(coord):
@@ -102,14 +203,22 @@ def find_score_from_image(image):
     for dy, dx in slices:
         # Skip too small or big regions
         area = abs((dx.stop - dx.start) * (dy.stop - dy.start))
-        print area
+        logging.debug('Found possible score block. Area: %s' % area)
         if area < MIN_SCORE_AREA or area > MAX_SCORE_AREA:
+            logging.info('Skip object with area %s' % area)
             continue
 
         x_center = (dx.start + dx.stop - 1) / 2
         y_center = (dy.start + dy.stop - 1) / 2
 
         objects.append((x_center, y_center))
+
+    logging.debug('Found %s objects which have correct area' % len(objects))
+
+    if len(objects) != 12:
+        err = 'Cannot find correct amount of score blocks. '
+        err += 'Expected 12, but found %s' % len(objects)
+        raise ValueError(err)
 
     return find_score(objects)
 
@@ -149,7 +258,8 @@ def calculate_line_rotation(point_a, point_b):
 
 def find_table_ends(points):
     """Finds two shortest lines between points. These two lines are the ends
-    of the table."""
+    of the table.
+    """
     combinations = itertools.combinations(points, 2)
     ends = heapq.nsmallest(2, combinations, key=distance_between_points)
     ends.sort()
@@ -320,100 +430,21 @@ def draw_points(image, points):
     return im
 
 
-def get_score(image):
-    # Create new bigger canvas where the table image can be rotated.
-    # This is needed because otherwise the table might be rotated outside
-    # of image bounds.
-    new_size = (image.size[0] * 2, image.size[1] * 2)
-    big = Image.new('RGB', new_size)
 
-    # Place the actual image in the middle of the new empty canvas
-    # The position was tested pretty much empirically
-    big.paste(image, (int(image.size[0] / 1.5), image.size[1] / 2))
+def setup_logging(root_logger, level=logging.DEBUG):
+    if root_logger.handlers:
+        for handler in root_logger.handlers:
+            root_logger.removeHandler(handler)
 
-    array = np.array(big)
-    # Convert RGB to BGR, because OpenCV uses BGR
-    cv_image = array[:, :, ::-1].copy()
+    format = '%(message)s'
 
-    rotated_image = straighten_table(cv_image)
+    formatter = logging.Formatter(format)
+    root_logger.setLevel(level)
 
-    # Find table corners
-    bw_image = find_blue(rotated_image)
-
-    if DEBUG:
-        cv2.imwrite('debug/found_blue.jpg', bw_image)
-
-    non_zero_pixels = cv2.findNonZero(bw_image)
-    rect = cv2.minAreaRect(non_zero_pixels)
-    precise_corners = cv2.cv.BoxPoints(rect)
-    corners = np.int0(np.around(precise_corners))
-
-    sorted_corners = [(x, y) for x, y in corners]
-    tl, br = find_crop_corners(sorted_corners)
-    sorted_corners.remove(tl)
-    sorted_corners.remove(br)
-    bl, tr = min(sorted_corners), max(sorted_corners)
-
-    # Find bounding boxes for scores
-    score_boxes = find_score_boxes([tl, bl, br, tr])
-    if DEBUG:
-        points = []
-        for box in score_boxes:
-            points += box
-
-        # Add table corners
-        points += [(x, y) for x, y in corners]
-
-        im = draw_points(rotated_image, points)
-        cv2.imwrite('debug/debug.jpg', im)
-
-    score1_crop, score2_crop = crop_boxes(rotated_image, score_boxes)
-
-    if DEBUG:
-        cv2.imwrite('debug/crop1.jpg', score1_crop)
-        cv2.imwrite('debug/crop2.jpg', score2_crop)
-
-
-    # Find white block score
-    bw_image = find_orange(score1_crop)
-
-    if DEBUG:
-        cv2.imwrite('debug/bw1.jpg', bw_image)
-
-    white_score = 10 - find_score_from_image(bw_image)
-
-    # Find blue block score
-    image = Image.fromarray(score2_crop).convert('L')
-    image = np.array(image, dtype=int)
-
-    # Threshold
-    T = 160
-    bw_image = image > T
-    if DEBUG:
-        scipy.misc.imsave('debug/bw2.jpg', bw_image)
-
-    blue_score = find_score_from_image(bw_image)
-
-    return white_score, blue_score
-
-
-def print_score(file_name):
-    image = Image.open(file_name).convert('RGB')
-    white, blue = get_score(image)
-    print 'White   Blue'
-    print '%s    -  %s' % (white, blue)
-
-
-def main():
-    file_name = sys.argv[1]
-
-    if file_name == 'stream':
-        while True:
-            urllib.urlretrieve('http://10.3.100.96:8080/?action=snapshot', 'stream.jpg')
-            print_score('stream.jpg')
-
-
-    print_score(file_name)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(level)
+    root_logger.addHandler(console_handler)
 
 
 if __name__ == '__main__':
