@@ -34,11 +34,16 @@ That did not work if the table was too straight because upper most pixel
  try: half of corner dots, and half again
 
 
+## Install
+
+*Dependencies*
+- OpenCV >= 2.4.4
+- Numpy
+- Scipy
+
+These might be tricky to install. I created new Ubuntu 13.10 vagrant box and installed dependencies with apt-get:
+
+    sudo apt-get install git python-opencv python-pip python-scipy
 
 
-
-# Install
-
-
-    sudo apt-get install git python-opencv python-pip
 
