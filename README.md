@@ -1,5 +1,10 @@
 # Football score detector
 
+
+![table](docs/table.jpg)
+
+
+
 - labeling algorithm
 - largest from labeling
 - rotate the image. labeling does not work.. hmmm..
@@ -31,4 +36,9 @@ That did not work if the table was too straight because upper most pixel
 
 
 
+
+# Install
+
+
+    sudo apt-get install git python-opencv python-pip
 
