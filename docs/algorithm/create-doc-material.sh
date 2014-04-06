@@ -16,7 +16,7 @@ python burn-text.py giftemp/found_corners.jpg "3"
 python burn-text.py giftemp/lower_long_side.jpg "4"
 python burn-text.py giftemp/large_straight.jpg "5"
 
-convert -delay 100 -loop 0 giftemp/large.jpg giftemp/found_blue.jpg giftemp/found_corners.jpg giftemp/lower_long_side.jpg giftemp/large_straight.jpg straighten-table.gif
+convert -delay 140 -loop 0 giftemp/large.jpg giftemp/found_blue.jpg giftemp/found_corners.jpg giftemp/lower_long_side.jpg giftemp/large_straight.jpg straighten-table.gif
 convert straighten-table.gif \( -clone 0 -set delay 200 \) -swap 0 +delete \( +clone -set delay 100 \) +swap +delete straighten-table.gif
 
 rm -r giftemp
