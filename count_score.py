@@ -113,8 +113,14 @@ def get_score(image):
     # Convert RGB to BGR, because OpenCV uses BGR
     cv_image = array[:, :, ::-1].copy()
 
+    if DEBUG:
+        cv2.imwrite('debug/large.jpg', cv_image)
+
     logging.debug('Straightening table..')
     rotated_image = straighten_table(cv_image)
+
+    if DEBUG:
+        cv2.imwrite('debug/large_straight.jpg', rotated_image)
 
     # Find table corners
     logging.debug('Finding table corners..')

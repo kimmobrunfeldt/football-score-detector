@@ -37,7 +37,15 @@ For example, we're finding score from this image
 
     ![](docs/algorithm/large.jpg)
 
-2. Find blue
+2. Rotate image so that table is straight
 
-    ![](docs/algorithm/found_blue.jpg)
+    This contains a few steps
+
+    1. Find blue table to a black and white image
+    2. Find corners from the image
+    3. Calculate the lower long side of table of corner points
+    4. Rotate image with the to straighten the found line
+
+    ![](docs/algorithm/straighten-table.gif)
+
 
