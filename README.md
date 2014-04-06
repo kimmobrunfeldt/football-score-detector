@@ -47,25 +47,25 @@ For example, we're finding score from this image
     3. (Frame 4) Calculate the lower long side of table of corner points
     4. (Frame 5) Rotate image with the to straighten the found line
 
-    ![](docs/algorithm/straighten-table.gif)
+    ![](docs/algorithm/straighten_table.gif)
 
 3. Label table corners
 
     Since the table is straightened, ordering corner points to top left, bottom left .. etc. is possible.
 
-    ![](docs/algorithm/label-corners.gif)
+    ![](docs/algorithm/label_corners.gif)
 
 4. Find short table ends and score blocks based on them
 
-    ![](docs/algorithm/find-score-blocks.gif)
+    ![](docs/algorithm/find_score_blocks.gif)
 
 5. Crop and rotate score blocks
 
     Left score blocks
-    ![](docs/algorithm/left-score-blocks.jpg)
+    ![](docs/algorithm/left_score_blocks.jpg)
 
     Right score blocks
-    ![](docs/algorithm/right-score-blocks.jpg)
+    ![](docs/algorithm/right_score_blocks.jpg)
 
 
 
