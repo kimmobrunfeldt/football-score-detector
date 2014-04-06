@@ -32,6 +32,12 @@ For example, we're finding score from this image
 
 ![](docs/algorithm/testdata.jpg)
 
+The images were originally in 800x600 resolution but they were resized to fit this document better.
+
+We have a blue football table which has score "boards" for both players. Left score blocks are white and they have small orange labels on them. Right score blocks are blue and they have small white labels on them.
+
+Goal is to count score for each player based on the score blocks' positions. In the example image left score is 1 and right score is 3.
+
 #### Algorithm
 
 1. Place original image on a larger 'canvas' so that OpenCV can rotate original image without cutting edges
