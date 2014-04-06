@@ -241,14 +241,17 @@ def find_lower_long_side(corners):
 
 
 def find_blue(image):
-    """Takes image which is in HSV color space and returns new image which is
-    black and white and all expect blue color is black.
+    """Takes image which is in BGR color space and returns new image which is
+    black and white and all blue regions are white.
     """
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     return cv2.inRange(hsv_image, BLUE_RANGE_MIN, BLUE_RANGE_MAX)
 
 
 def find_orange(image):
+    """Takes image which is in BGR color space and returns new image which is
+    black and white and all orange regions are white.
+    """
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     return cv2.inRange(hsv_image, ORANGE_RANGE_MIN, ORANGE_RANGE_MAX)
 
@@ -397,6 +400,14 @@ def calculate_coordinate_addition(middle1, middle2, percent=SCORE_BLOCK_LENGTH):
 
 
 def calculate_score_box(middle_a, middle_b, addition):
+    """Calculate bounding box for score blocks.
+
+    middle_a: Upper 'middle of middle' point
+    middle_b: Lower 'middle of middle' point
+    addition: tuple (delta_x, delta_y)
+              Indicates how much should be added to each middle of middle point
+              to create the box.
+    """
     box_a = (middle_a[0] + addition[0], middle_a[1] + addition[1])
     box_b = (middle_b[0] + addition[0], middle_b[1] + addition[1])
 
@@ -404,16 +415,14 @@ def calculate_score_box(middle_a, middle_b, addition):
 
 # Generic OpenCV functions
 
-def subimage(image, centre, theta, width, height):
-    output_image = cv2.cv.CreateImage((width, height), 2, 3)
-    mapping = np.array([[np.cos(theta), -np.sin(theta), centre[0]],
-                       [np.sin(theta), np.cos(theta), centre[1]]])
-    map_matrix_cv = cv2.cv.fromarray(mapping)
-    cv2.cv.GetQuadrangleSubPix(image, output_image, map_matrix_cv)
-    return output_image
-
-
 def rotate_image(image, angle, rotation_point=(0, 0)):
+    """Rotates image.
+
+    angle: Rotation angle in degrees
+    rotation_point: Rotation origin coordinate.
+
+    Returns rotated image.
+    """
     rot_mat = cv2.getRotationMatrix2D(rotation_point, angle, 1)
 
     shape = image.shape[1], image.shape[0]
@@ -422,6 +431,9 @@ def rotate_image(image, angle, rotation_point=(0, 0)):
 
 
 def draw_points(image, points):
+    """Draws points to a given image. Returns copy of image, original is not
+    modified.
+    """
     im = image.copy()
 
     for point in points:
@@ -432,6 +444,7 @@ def draw_points(image, points):
 # Generic math functions
 
 def flip(coord):
+    """Flips two coordinates. (a, b) -> (b, a)"""
     a, b = coord
     return b, a
 
@@ -468,10 +481,12 @@ def calculate_line_rotation(point_a, point_b):
 
 
 def middle_point(p1, p2):
+    """Returns point between p1 and p2"""
     return ((p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2)
 
 
 def rad_to_deg(r):
+    """Converts radians to degrees"""
     return 180.0 * r / math.pi
 
 
