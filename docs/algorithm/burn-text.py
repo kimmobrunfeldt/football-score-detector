@@ -31,13 +31,13 @@ STAMP_ALPHA = 255
 
 # Position for timestamp text
 # These must be strings, they are evaluated to calculate the final value
-X_POSITION = "50"
-Y_POSITION = "50"
+X_POSITION = "20"
+Y_POSITION = "20"
 
 
 def draw_stamp(img, stamp):
     width, height = img.size
-    font = ImageFont.truetype(FONT_PATH, 120)
+    font = ImageFont.truetype(FONT_PATH, 55)
 
     watermark = Image.new("RGBA", img.size)
     draw = ImageDraw.Draw(watermark)
