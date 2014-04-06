@@ -6,7 +6,7 @@ rm *.jpg
 rm *.gif
 cp ../../debug/* .
 cp ../../testdata/real3.jpg testdata.jpg
-mogrify -geometry 500x *.jpg
+mogrify -geometry '500x>' *.jpg
 
 # Create straighten table animation
 mkdir giftemp
