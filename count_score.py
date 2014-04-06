@@ -166,7 +166,7 @@ def get_score(image):
 
     # Find bounding boxes for scores
     logging.debug('Finding and cropping score blocks..')
-    score_boxes = find_score_boxes([tl, bl, br, tr])
+    score_boxes = find_score_boxes([tl, bl, br, tr], rotated_image)
     if DEBUG:
         points = []
         for box in score_boxes:
@@ -234,8 +234,7 @@ def straighten_table(image):
     lower_a, lower_b = find_lower_long_side(corners)
 
     if DEBUG:
-        lower_line_im = draw_points(image, [lower_a, lower_b])
-        cv2.line(lower_line_im, lower_a, lower_b, (0, 0, 255), 3)
+        lower_line_im = draw_lines(image, [[lower_a, lower_b]])
         cv2.imwrite('debug/lower_long_side.jpg', lower_line_im)
 
     rotation = rad_to_deg(calculate_line_rotation(lower_a, lower_b))
@@ -298,13 +297,27 @@ def find_crop_corners(box):
     return (tl_x, tl_y), (br_x, br_y)
 
 
-def find_score_boxes(corners):
-    """Finds the bounding boxes for scores based on table's corners."""
+def find_score_boxes(corners, image):
+    """Finds the bounding boxes for scores based on table's corners.
+
+    image is just passed for debugging purposes
+    """
     ends = find_table_ends(corners)
+
+    if DEBUG:
+        ends_im = draw_lines(image, ends)
+        cv2.imwrite('debug/table_ends.jpg', ends_im)
 
     end1, end2 = ends
     middle1, middle1_a, middle1_b = table_end_middles(end1)
     middle2, middle2_a, middle2_b = table_end_middles(end2)
+
+    if DEBUG:
+        middle_im = draw_points(image, [middle1, middle2])
+        cv2.imwrite('debug/table_middle.jpg', middle_im)
+
+        middle_im = draw_points(image, [middle1_a, middle1_b, middle2_a, middle2_b])
+        cv2.imwrite('debug/table_middles_of_middle.jpg', middle_im)
 
     add1 = calculate_coordinate_addition(middle1, middle2, SCORE_INNER_MARGIN)
     add2 = calculate_coordinate_addition(middle2, middle1, SCORE_INNER_MARGIN)
@@ -315,6 +328,10 @@ def find_score_boxes(corners):
     middle2_a = (middle2_a[0] + add2[0], middle2_a[1] + add2[1])
     middle2_b = (middle2_b[0] + add2[0], middle2_b[1] + add2[1])
 
+    if DEBUG:
+        middle_im = draw_points(image, [middle1_a, middle1_b, middle2_a, middle2_b])
+        cv2.imwrite('debug/table_middles_of_middle_add.jpg', middle_im)
+
     addition1 = calculate_coordinate_addition(middle1, middle2)
     # This is basically opposite direction than addition1
     addition2 = calculate_coordinate_addition(middle2, middle1)
@@ -322,6 +339,12 @@ def find_score_boxes(corners):
     # Calculate the bounding boxes for score blocks
     end1_box = calculate_score_box(middle1_a, middle1_b, addition1)
     end2_box = calculate_score_box(middle2_a, middle2_b, addition2)
+
+    if DEBUG:
+        score_box_im = draw_points(image, end1_box)
+        score_box_im = draw_points(score_box_im, end2_box)
+        cv2.imwrite('debug/table_score_box.jpg', score_box_im)
+
     return end1_box, end2_box
 
 
@@ -486,6 +509,21 @@ def draw_label(image, point, label, font=cv2.FONT_HERSHEY_SIMPLEX):
     x, y = point
     label_top_left = (x - size[0] / 2, y - size[1] / 2)
     cv2.putText(im, label, label_top_left, font, font_scale, (0, 0, 255), thickness)
+
+    return im
+
+
+def draw_lines(image, lines):
+    """Draws lines to a given image. Lines are in format
+    [[(x1, y1), (x2, y2)]]
+
+    Returns copy of image, original is not modified.
+    """
+    im = image.copy()
+
+    for p1, p2 in lines:
+        im = draw_points(im, [p1, p2])
+        cv2.line(im, p1, p2, (0, 0, 255), 3)
 
     return im
 

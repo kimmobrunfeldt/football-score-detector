@@ -30,3 +30,11 @@ convert label-corners.gif \( -clone 0 -set delay 250 \) -swap 0 +delete \( +clon
 
 rm -r giftemp
 
+# Create left score block finding
+mkdir giftemp
+cp table_ends.jpg table_middle.jpg table_middles_of_middle.jpg table_middles_of_middle_add.jpg table_score_box.jpg giftemp
+
+convert -quality 100 -delay 140 -loop 0 table_ends.jpg table_middle.jpg table_middles_of_middle.jpg table_middles_of_middle_add.jpg table_score_box.jpg find-score-blocks.gif
+convert find-score-blocks.gif \( -clone 0 -set delay 250 \) -swap 0 +delete \( +clone -set delay 250 \) +swap +delete find-score-blocks.gif
+
+rm -r giftemp

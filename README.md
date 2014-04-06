@@ -42,10 +42,10 @@ For example, we're finding score from this image
 
     This contains a few steps
 
-    * (Frame 2) Find blue table
-    * (Frame 3) Find corners from the image
-    * (Frame 4) Calculate the lower long side of table of corner points
-    * (Frame 5) Rotate image with the to straighten the found line
+    - (Frame 2) Find blue table
+    - (Frame 3) Find corners from the image
+    - (Frame 4) Calculate the lower long side of table of corner points
+    - (Frame 5) Rotate image with the to straighten the found line
 
     ![](docs/algorithm/straighten-table.gif)
 
@@ -54,6 +54,18 @@ For example, we're finding score from this image
     Since the table is straightened, ordering corner points to top left, bottom left .. etc. is possible.
 
     ![](docs/algorithm/label-corners.gif)
+
+4. Find short table ends and score blocks based on them
+
+    ![](docs/algorithm/find-score-blocks.gif)
+
+5. Crop and rotate score blocks
+
+    Left score blocks
+    ![](docs/algorithm/left-score-blocks.jpg)
+
+    Right score blocks
+    ![](docs/algorithm/right-score-blocks.jpg)
 
 
 
