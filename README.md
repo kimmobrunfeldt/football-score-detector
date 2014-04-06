@@ -25,4 +25,19 @@ These might be tricky to install. I created new Ubuntu 13.10 vagrant box and ins
     sudo apt-get install git python-opencv python-pip python-scipy
 
 
+## How it works
+
+For example, we're finding score from this image
+
+![real3](testdata/real3.jpg)
+
+#### Algorithm
+
+1. Place original image on a larger 'canvas' so that OpenCV can rotate original image without cutting edges
+
+    ![](docs/algorithm/large.jpg)
+
+2. Find blue
+
+    ![](docs/algorithm/found_blue.jpg)
 
