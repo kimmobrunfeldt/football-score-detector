@@ -21,4 +21,12 @@ convert straighten-table.gif \( -clone 0 -set delay 250 \) -swap 0 +delete \( +c
 
 rm -r giftemp
 
+# Create label corners animation
+mkdir giftemp
+cp corner_a.jpg corner_b.jpg corner_c.jpg corner_d.jpg corner_labels.jpg giftemp
+
+convert -delay 140 -loop 0 corner_a.jpg corner_b.jpg corner_c.jpg corner_d.jpg corner_labels.jpg label-corners.gif
+convert label-corners.gif \( -clone 0 -set delay 250 \) -swap 0 +delete \( +clone -set delay 250 \) +swap +delete label-corners.gif
+
+rm -r giftemp
 

@@ -140,6 +140,32 @@ def get_score(image):
     sorted_corners.remove(br)
     bl, tr = min(sorted_corners), max(sorted_corners)
 
+    if DEBUG:
+        label_tl_im = draw_label(rotated_image, tl, 'A')
+        label_tl_im = draw_points(label_tl_im, [tl])
+        cv2.imwrite('debug/corner_a.jpg', label_tl_im)
+
+        label_bl_im = draw_label(rotated_image, bl, 'B')
+        label_bl_im = draw_points(label_bl_im, [bl])
+        cv2.imwrite('debug/corner_b.jpg', label_bl_im)
+
+        label_br_im = draw_label(rotated_image, br, 'C')
+        label_br_im = draw_points(label_br_im, [br])
+        cv2.imwrite('debug/corner_c.jpg', label_br_im)
+
+        label_tr_im = draw_label(rotated_image, tr, 'D')
+        label_tr_im = draw_points(label_tr_im, [tr])
+        cv2.imwrite('debug/corner_d.jpg', label_tr_im)
+
+        labels = draw_label(rotated_image, tl, 'A')
+        labels = draw_label(labels, bl, 'B')
+        labels = draw_label(labels, br, 'C')
+        labels = draw_label(labels, tr, 'D')
+        labels = draw_points(labels, [tl, bl, br, tr])
+        cv2.imwrite('debug/corner_labels.jpg', labels)
+
+
+
     # Find bounding boxes for scores
     logging.debug('Finding and cropping score blocks..')
     score_boxes = find_score_boxes([tl, bl, br, tr])
@@ -444,6 +470,24 @@ def draw_points(image, points):
 
     for point in points:
         cv2.circle(im, tuple(point), 3, (0, 0, 255), 3)
+
+    return im
+
+
+def draw_label(image, point, label, font=cv2.FONT_HERSHEY_SIMPLEX):
+    """Draws label for point to a given image.
+    Returns copy of image, original is not modified.
+    """
+    im = image.copy()
+
+    font_scale = 1
+    thickness = 2
+    # http://docs.opencv.org/modules/core/doc/drawing_functions.html#gettextsize
+    # Returns bounding box and baseline -> ((width, height), baseline)
+    size = cv2.getTextSize(label, font, font_scale, thickness)[0]
+    x, y = point
+    label_top_left = (x - size[0] / 2, y - size[1] / 2)
+    cv2.putText(im, label, label_top_left, font, font_scale, (0, 0, 255), thickness)
 
     return im
 

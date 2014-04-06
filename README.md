@@ -15,7 +15,8 @@ and outputs following JSON
 
 ## Install
 
-**Dependencies**
+You need Python and a few **dependencies:**
+
 - OpenCV >= 2.4.4
 - Numpy
 - Scipy
@@ -47,5 +48,15 @@ For example, we're finding score from this image
     * (Frame 5) Rotate image with the to straighten the found line
 
     ![](docs/algorithm/straighten-table.gif)
+
+3. Label table corners
+
+    Since the table is straightened, ordering corner points to top left, bottom left .. etc. is possible.
+
+    ![](docs/algorithm/label-corners.gif)
+
+
+
+
 
 
