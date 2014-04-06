@@ -85,6 +85,7 @@ def print_score(file_name):
 
 
 def get_score(image):
+    """Finds score data from given RGB image which is Image object"""
     data = {}
 
     # Create new bigger canvas where the table image can be rotated.
