@@ -164,8 +164,6 @@ def get_score(image):
         labels = draw_points(labels, [tl, bl, br, tr])
         cv2.imwrite('debug/corner_labels.jpg', labels)
 
-
-
     # Find bounding boxes for scores
     logging.debug('Finding and cropping score blocks..')
     score_boxes = find_score_boxes([tl, bl, br, tr])
@@ -480,7 +478,7 @@ def draw_label(image, point, label, font=cv2.FONT_HERSHEY_SIMPLEX):
     """
     im = image.copy()
 
-    font_scale = 1
+    font_scale = 3
     thickness = 2
     # http://docs.opencv.org/modules/core/doc/drawing_functions.html#gettextsize
     # Returns bounding box and baseline -> ((width, height), baseline)
