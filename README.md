@@ -62,9 +62,11 @@ For example, we're finding score from this image
 5. Crop and rotate score blocks
 
     Left score blocks
+
     ![](docs/algorithm/left_score_blocks.jpg)
 
     Right score blocks
+
     ![](docs/algorithm/right_score_blocks.jpg)
 
 
