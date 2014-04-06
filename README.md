@@ -29,7 +29,7 @@ These might be tricky to install. I created new Ubuntu 13.10 vagrant box and ins
 
 For example, we're finding score from this image
 
-![real3](testdata/real3.jpg)
+![](docs/algorithm/testdata.jpg)
 
 #### Algorithm
 
