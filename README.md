@@ -42,10 +42,10 @@ For example, we're finding score from this image
 
     This contains a few steps
 
-    - (Frame 2) Find blue table
-    - (Frame 3) Find corners from the image
-    - (Frame 4) Calculate the lower long side of table of corner points
-    - (Frame 5) Rotate image with the to straighten the found line
+    1. (Frame 2) Find blue table
+    2. (Frame 3) Find corners from the image
+    3. (Frame 4) Calculate the lower long side of table of corner points
+    4. (Frame 5) Rotate image with the to straighten the found line
 
     ![](docs/algorithm/straighten-table.gif)
 
