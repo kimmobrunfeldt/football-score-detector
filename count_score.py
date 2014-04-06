@@ -10,6 +10,7 @@ import itertools
 import json
 import logging
 import math
+import traceback
 import sys
 
 import numpy as np
@@ -32,7 +33,7 @@ SCORE_TO_MIDDLE_MARGIN = 0.17
 # Area limits for found score blocks
 # The score blocks' area must be in these bounds or it is dumped as a random
 # 'trash'
-MIN_SCORE_AREA = 15
+MIN_SCORE_AREA = 5
 MAX_SCORE_AREA = 120
 
 # http://stackoverflow.com/questions/10948589/choosing-correct-hsv-values-for-opencv-thresholding-with-inranges
@@ -79,8 +80,18 @@ def setup_logging(root_logger, level=logging.DEBUG):
 
 def print_score(file_name):
     image = Image.open(file_name).convert('RGB')
-    score = get_score(image)
+    try:
+        score = get_score(image)
+    except Exception, e:
+        out = {
+            'success': False,
+            'error': str(e),
+            'stacktrace': traceback.format_exc()
+        }
+        print json.dumps(out)
+        return
 
+    score['success'] = True
     print json.dumps(score)
 
 
@@ -110,7 +121,7 @@ def get_score(image):
     bw_image = find_blue(rotated_image)
 
     if DEBUG:
-        cv2.imwrite('debug/found_blue.jpg', bw_image)
+        cv2.imwrite('debug/found_blue_large.jpg', bw_image)
 
     non_zero_pixels = cv2.findNonZero(bw_image)
     rect = cv2.minAreaRect(non_zero_pixels)
@@ -174,8 +185,10 @@ def straighten_table(image):
         - From corners, find lower long side of the table
         - Calculate rotation from the line and rotate the image
     """
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    bw_image = find_blue(hsv_image)
+    bw_image = find_blue(image)
+
+    if DEBUG:
+        cv2.imwrite('debug/found_blue.jpg', bw_image)
 
     non_zero_pixels = cv2.findNonZero(bw_image)
 
@@ -183,8 +196,17 @@ def straighten_table(image):
     precise_corners = cv2.cv.BoxPoints(rect)
     corners = np.int0(np.around(precise_corners))
 
+    if DEBUG:
+        corners_im = draw_points(image, corners)
+        cv2.imwrite('debug/found_corners.jpg', corners_im)
+
     # Find lowest long side of the table and straigthen based on it
     lower_a, lower_b = find_lower_long_side(corners)
+
+    if DEBUG:
+        lower_line_im = draw_points(image, [lower_a, lower_b])
+        cv2.line(lower_line_im, lower_a, lower_b, (0, 0, 255), 3)
+        cv2.imwrite('debug/lower_long_side.jpg', lower_line_im)
 
     rotation = rad_to_deg(calculate_line_rotation(lower_a, lower_b))
     # Rotate based on the other end of the line
@@ -403,7 +425,7 @@ def draw_points(image, points):
     im = image.copy()
 
     for point in points:
-        cv2.circle(im, tuple(point), 10, (0, 0, 255))
+        cv2.circle(im, tuple(point), 3, (0, 0, 255), 3)
 
     return im
 
