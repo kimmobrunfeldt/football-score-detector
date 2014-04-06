@@ -61,6 +61,22 @@ def main():
     print_score(file_name)
 
 
+def setup_logging(root_logger, level=logging.DEBUG):
+    if root_logger.handlers:
+        for handler in root_logger.handlers:
+            root_logger.removeHandler(handler)
+
+    format = '%(message)s'
+
+    formatter = logging.Formatter(format)
+    root_logger.setLevel(level)
+
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(level)
+    root_logger.addHandler(console_handler)
+
+
 def print_score(file_name):
     image = Image.open(file_name).convert('RGB')
     score = get_score(image)
@@ -149,48 +165,118 @@ def get_score(image):
     return data
 
 
-def flip(coord):
-    a, b = coord
-    return b, a
+def straighten_table(image):
+    """Rotates a given image so that the football table is straight.
 
-
-def distance_between_points(p):
-    """Takes tuple p which contains two points and returns the difference
-    between them. p format: ((x1, y1), (x2, y2))
+    In English:
+        - Find the table and determine its corners
+        - From corners, find lower long side of the table
+        - Calculate rotation from the line and rotate the image
     """
-    return math.sqrt((p[1][0] - p[0][0])**2 + (p[1][1] - p[0][1])**2)
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    bw_image = find_blue(hsv_image)
+
+    non_zero_pixels = cv2.findNonZero(bw_image)
+
+    rect = cv2.minAreaRect(non_zero_pixels)
+    precise_corners = cv2.cv.BoxPoints(rect)
+    corners = np.int0(np.around(precise_corners))
+
+    # Find lowest long side of the table and straigthen based on it
+    lower_a, lower_b = find_lower_long_side(corners)
+
+    rotation = rad_to_deg(calculate_line_rotation(lower_a, lower_b))
+    # Rotate based on the other end of the line
+    rotated_image = rotate_image(image, rotation, rotation_point=lower_a)
+    return rotated_image
 
 
-def average_distance_between_score_dots(points):
-    """Calculates the average distance between given points.
+def find_lower_long_side(corners):
+    """From corner points, finds the lowest long side of a rectangle.
 
-    For example with a, b and c points:
+    For example:
 
-          d1    d2
-        a----b------c
+            d
+           / \
+          /   c          a-----d
+         a   /     and   |     |
+          \ /            b-----c
+           b
 
-    Would return: (d1 + d2) / 2
+    Both cases would return points b and c.
     """
-    distances = []
-    for i, point in enumerate(points[:-1]):
-        distances.append(distance_between_points((point, points[i + 1])))
+    sorted_by_y = sorted([(y, x) for x, y in corners])
+    lowest = sorted_by_y[-1]
+    distance_a = distance_between_points((lowest, sorted_by_y[1]))
+    distance_b = distance_between_points((lowest, sorted_by_y[2]))
 
-    return float(sum(distances)) / len(distances)
+    point_a = lowest
+    point_b = sorted_by_y[1] if distance_a > distance_b else sorted_by_y[2]
+
+    # Flip back to x, y format, because they were sorted based on y
+    return flip(point_a), flip(point_b)
 
 
-def find_score(points):
-    """Returns the score from points."""
-    # Put points to left-to-right order(ordered by x coordinate)
-    points.sort()
-    middle_distance = average_distance_between_score_dots(points)
+def find_blue(image):
+    """Takes image which is in HSV color space and returns new image which is
+    black and white and all expect blue color is black.
+    """
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    return cv2.inRange(hsv_image, BLUE_RANGE_MIN, BLUE_RANGE_MAX)
 
-    score = 0
-    for i, point in enumerate(points[:-1]):
-        if distance_between_points((point, points[i + 1])) > middle_distance:
-            break
 
-        score += 1
-    return score
+def find_orange(image):
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    return cv2.inRange(hsv_image, ORANGE_RANGE_MIN, ORANGE_RANGE_MAX)
+
+
+def find_crop_corners(box):
+    """Finds top left and bottom right from 4 coordinates."""
+    sorted_by_x = sorted(box)
+    left_coords = sorted_by_x[0:2]
+    right_coords = sorted_by_x[2:]
+
+    tl_y, tl_x = min([(y, x) for x, y in left_coords])
+    br_y, br_x = max([(y, x) for x, y in right_coords])
+
+    return (tl_x, tl_y), (br_x, br_y)
+
+
+def find_score_boxes(corners):
+    """Finds the bounding boxes for scores based on table's corners."""
+    ends = find_table_ends(corners)
+
+    end1, end2 = ends
+    middle1, middle1_a, middle1_b = table_end_middles(end1)
+    middle2, middle2_a, middle2_b = table_end_middles(end2)
+
+    add1 = calculate_coordinate_addition(middle1, middle2, SCORE_INNER_MARGIN)
+    add2 = calculate_coordinate_addition(middle2, middle1, SCORE_INNER_MARGIN)
+
+    middle1_a = (middle1_a[0] + add1[0], middle1_a[1] + add1[1])
+    middle1_b = (middle1_b[0] + add1[0], middle1_b[1] + add1[1])
+
+    middle2_a = (middle2_a[0] + add2[0], middle2_a[1] + add2[1])
+    middle2_b = (middle2_b[0] + add2[0], middle2_b[1] + add2[1])
+
+    addition1 = calculate_coordinate_addition(middle1, middle2)
+    # This is basically opposite direction than addition1
+    addition2 = calculate_coordinate_addition(middle2, middle1)
+
+    # Calculate the bounding boxes for score blocks
+    end1_box = calculate_score_box(middle1_a, middle1_b, addition1)
+    end2_box = calculate_score_box(middle2_a, middle2_b, addition2)
+    return end1_box, end2_box
+
+
+def find_table_ends(points):
+    """Finds two shortest lines between points. These two lines are the ends
+    of the table.
+    """
+    combinations = itertools.combinations(points, 2)
+    ends = heapq.nsmallest(2, combinations, key=distance_between_points)
+    ends.sort()
+    return ends
 
 
 def find_score_from_image(image):
@@ -228,64 +314,37 @@ def find_score_from_image(image):
     return find_score(objects)
 
 
-def find_lower_long_side(corners):
-    """From corner points, finds the lowest long side of a rectangle.
-
-    For example:
-
-            d
-           / \
-          /   c          a-----d
-         a   /     and   |     |
-          \ /            b-----c
-           b
-
-    Both cases would return points b and c.
+def crop_boxes(image, boxes):
+    """Crops given boxes from image, boxes contain all box corners, where
+    first is top left and third is bottom right.
     """
-    sorted_by_y = sorted([(y, x) for x, y in corners])
-    lowest = sorted_by_y[-1]
-    distance_a = distance_between_points((lowest, sorted_by_y[1]))
-    distance_b = distance_between_points((lowest, sorted_by_y[2]))
+    crops = []
 
-    point_a = lowest
-    point_b = sorted_by_y[1] if distance_a > distance_b else sorted_by_y[2]
+    for box in boxes:
+        tl, br = find_crop_corners(box)
+        x1, y1 = tl[0], tl[1]
+        x2, y2 = br[0], br[1]
+        cropped = image[y1:y2, x1:x2]
+        cropped = cv2.transpose(cropped)
+        cropped = cv2.flip(cropped, 0)
+        crops.append(cropped)
 
-    # Flip back to x, y format, because they were sorted based on y
-    return flip(point_a), flip(point_b)
-
-
-def calculate_line_rotation(point_a, point_b):
-    """Calculates rotation of a line from point_a point of view."""
-    x_diff = float(point_b[0] - point_a[0])
-    y_diff = point_b[1] - point_a[1]
-    return math.atan(y_diff / x_diff)
+    return crops
 
 
-def find_table_ends(points):
-    """Finds two shortest lines between points. These two lines are the ends
-    of the table.
-    """
-    combinations = itertools.combinations(points, 2)
-    ends = heapq.nsmallest(2, combinations, key=distance_between_points)
-    ends.sort()
-    return ends
+def find_score(points):
+    """Returns the score from points."""
+    # Put points to left-to-right order(ordered by x coordinate)
+    points.sort()
+    middle_distance = average_distance_between_score_dots(points)
 
+    score = 0
+    for i, point in enumerate(points[:-1]):
+        if distance_between_points((point, points[i + 1])) > middle_distance:
+            break
 
-def find_blue(image):
-    """Takes image which is in HSV color space and returns new image which is
-    black and white and all expect blue color is black.
-    """
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    return cv2.inRange(hsv_image, BLUE_RANGE_MIN, BLUE_RANGE_MAX)
-
-
-def find_orange(image):
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    return cv2.inRange(hsv_image, ORANGE_RANGE_MIN, ORANGE_RANGE_MAX)
-
-
-def middle_point(p1, p2):
-    return ((p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2)
+        score += 1
+    return score
 
 
 def table_end_middles(end):
@@ -320,6 +379,7 @@ def calculate_score_box(middle_a, middle_b, addition):
 
     return (middle_b, middle_a, box_a, box_b)
 
+# Generic OpenCV functions
 
 def subimage(image, centre, theta, width, height):
     output_image = cv2.cv.CreateImage((width, height), 2, 3)
@@ -330,100 +390,12 @@ def subimage(image, centre, theta, width, height):
     return output_image
 
 
-
 def rotate_image(image, angle, rotation_point=(0, 0)):
     rot_mat = cv2.getRotationMatrix2D(rotation_point, angle, 1)
 
     shape = image.shape[1], image.shape[0]
     result = cv2.warpAffine(image, rot_mat, shape, flags=cv2.INTER_LINEAR)
     return result
-
-
-def rad_to_deg(r):
-    return 180.0 * r / math.pi
-
-
-def straighten_table(image):
-    """Rotates a given image so that the football table is straight.
-
-    In English:
-        - Find the table and determine its corners
-        - From corners, find lower long side of the table
-        - Calculate rotation from the line and rotate the image
-    """
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    bw_image = find_blue(hsv_image)
-
-    non_zero_pixels = cv2.findNonZero(bw_image)
-
-    rect = cv2.minAreaRect(non_zero_pixels)
-    precise_corners = cv2.cv.BoxPoints(rect)
-    corners = np.int0(np.around(precise_corners))
-
-    # Find lowest long side of the table and straigthen based on it
-    lower_a, lower_b = find_lower_long_side(corners)
-
-    rotation = rad_to_deg(calculate_line_rotation(lower_a, lower_b))
-    # Rotate based on the other end of the line
-    rotated_image = rotate_image(image, rotation, rotation_point=lower_a)
-    return rotated_image
-
-
-def find_score_boxes(corners):
-    """Finds the bounding boxes for scores based on table's corners."""
-    ends = find_table_ends(corners)
-
-    end1, end2 = ends
-    middle1, middle1_a, middle1_b = table_end_middles(end1)
-    middle2, middle2_a, middle2_b = table_end_middles(end2)
-
-    add1 = calculate_coordinate_addition(middle1, middle2, SCORE_INNER_MARGIN)
-    add2 = calculate_coordinate_addition(middle2, middle1, SCORE_INNER_MARGIN)
-
-    middle1_a = (middle1_a[0] + add1[0], middle1_a[1] + add1[1])
-    middle1_b = (middle1_b[0] + add1[0], middle1_b[1] + add1[1])
-
-    middle2_a = (middle2_a[0] + add2[0], middle2_a[1] + add2[1])
-    middle2_b = (middle2_b[0] + add2[0], middle2_b[1] + add2[1])
-
-    addition1 = calculate_coordinate_addition(middle1, middle2)
-    # This is basically opposite direction than addition1
-    addition2 = calculate_coordinate_addition(middle2, middle1)
-
-    # Calculate the bounding boxes for score blocks
-    end1_box = calculate_score_box(middle1_a, middle1_b, addition1)
-    end2_box = calculate_score_box(middle2_a, middle2_b, addition2)
-    return end1_box, end2_box
-
-
-def crop_boxes(image, boxes):
-    """Crops given boxes from image, boxes contain all box corners, where
-    first is top left and third is bottom right.
-    """
-    crops = []
-
-    for box in boxes:
-        tl, br = find_crop_corners(box)
-        x1, y1 = tl[0], tl[1]
-        x2, y2 = br[0], br[1]
-        cropped = image[y1:y2, x1:x2]
-        cropped = cv2.transpose(cropped)
-        cropped = cv2.flip(cropped, 0)
-        crops.append(cropped)
-
-    return crops
-
-
-def find_crop_corners(box):
-    """Finds top left and bottom right from 4 coordinates."""
-    sorted_by_x = sorted(box)
-    left_coords = sorted_by_x[0:2]
-    right_coords = sorted_by_x[2:]
-
-    tl_y, tl_x = min([(y, x) for x, y in left_coords])
-    br_y, br_x = max([(y, x) for x, y in right_coords])
-
-    return (tl_x, tl_y), (br_x, br_y)
 
 
 def draw_points(image, points):
@@ -434,22 +406,50 @@ def draw_points(image, points):
 
     return im
 
+# Generic math functions
+
+def flip(coord):
+    a, b = coord
+    return b, a
 
 
-def setup_logging(root_logger, level=logging.DEBUG):
-    if root_logger.handlers:
-        for handler in root_logger.handlers:
-            root_logger.removeHandler(handler)
+def distance_between_points(p):
+    """Takes tuple p which contains two points and returns the difference
+    between them. p format: ((x1, y1), (x2, y2))
+    """
+    return math.sqrt((p[1][0] - p[0][0])**2 + (p[1][1] - p[0][1])**2)
 
-    format = '%(message)s'
 
-    formatter = logging.Formatter(format)
-    root_logger.setLevel(level)
+def average_distance_between_score_dots(points):
+    """Calculates the average distance between given points.
 
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(formatter)
-    console_handler.setLevel(level)
-    root_logger.addHandler(console_handler)
+    For example with a, b and c points:
+
+          d1    d2
+        a----b------c
+
+    Would return: (d1 + d2) / 2
+    """
+    distances = []
+    for i, point in enumerate(points[:-1]):
+        distances.append(distance_between_points((point, points[i + 1])))
+
+    return float(sum(distances)) / len(distances)
+
+
+def calculate_line_rotation(point_a, point_b):
+    """Calculates rotation of a line from point_a point of view."""
+    x_diff = float(point_b[0] - point_a[0])
+    y_diff = point_b[1] - point_a[1]
+    return math.atan(y_diff / x_diff)
+
+
+def middle_point(p1, p2):
+    return ((p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2)
+
+
+def rad_to_deg(r):
+    return 180.0 * r / math.pi
 
 
 if __name__ == '__main__':
