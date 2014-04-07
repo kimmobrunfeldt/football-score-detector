@@ -40,11 +40,11 @@ Goal is to count score for each player based on the score blocks' positions. In 
 
 #### Algorithm
 
-1. Place original image on a larger 'canvas' so that OpenCV can rotate original image without cutting edges
+1. **Place original image on a larger 'canvas' so that OpenCV can rotate original image without cutting edges**
 
     ![](docs/algorithm/large.jpg)
 
-2. Rotate image so that table is straight
+2. **Rotate image so that table is straight**
 
     This contains a few steps
 
@@ -55,17 +55,17 @@ Goal is to count score for each player based on the score blocks' positions. In 
 
     ![](docs/algorithm/straighten_table.gif)
 
-3. Label table corners
+3. **Label table corners**
 
     Since the table is straightened, ordering corner points to top left, bottom left .. etc. is possible.
 
     ![](docs/algorithm/label_corners.gif)
 
-4. Find short table ends and score blocks based on them
+4. **Find short table ends and score blocks based on them**
 
     ![](docs/algorithm/find_score_blocks.gif)
 
-5. Crop and rotate score blocks. Then apply threshold to images
+5. **Crop and rotate score blocks. Then apply threshold to images**
 
     Left score blocks. HSV threshold for orange hue is applied.
 
@@ -77,7 +77,7 @@ Goal is to count score for each player based on the score blocks' positions. In 
 
     The outermost blocks are not actual score blocks. They are blocks which hold the actual score blocks in place.
 
-6. Calculate score from score block images
+6. **Calculate score from score block images**
 
     Find separate objects and their centers from black and white image
 
