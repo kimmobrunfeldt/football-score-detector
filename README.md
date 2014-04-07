@@ -77,9 +77,7 @@ Now that we have 12 center coordinates for objects, we can find where the bigges
 
 ### All combined
 
-<p align="center">
-  <img src="https://github.com/kimmobrunfeldt/football-score-detector/blob/master/docs/algorithm/algorithm.gif?raw=true" alt=""/>
-</p>
+![](docs/algorithm/algorithm.gif)
 
 ## Install
 
