@@ -67,11 +67,23 @@ Goal is to count score for each player based on the score blocks' positions. In 
 
 5. Crop and rotate score blocks. Then apply threshold to images
 
-    Left score blocks
+    Left score blocks. HSV threshold for orange hue is applied.
 
     ![](docs/algorithm/left_threshold.gif)
 
-    Right score blocks
+    Right score blocks. Normal threshold which finds bright areas is applied.
 
     ![](docs/algorithm/right_threshold.gif)
+
+    The outermost blocks are not actual score blocks. They are blocks which hold the actual score blocks in place.
+
+6. Calculate score from score block images
+
+    Find separate objects and their centers from black and white image
+
+    ![](docs/algorithm/centers_left.jpg)
+
+    Now that we have 12 center coordinates for objects, we can find where the biggest gap between blocks is. From that information it is possible to count score.
+
+
 

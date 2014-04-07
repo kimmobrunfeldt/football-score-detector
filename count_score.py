@@ -190,7 +190,12 @@ def get_score(image):
     if DEBUG:
         cv2.imwrite('debug/left_score_blocks_black_white.jpg', bw_image)
 
-    data['leftScore'] = 10 - find_score_from_image(bw_image)
+    objects = find_object_centers(bw_image)
+    data['leftScore'] = 10 - find_score(objects)
+
+    if DEBUG:
+        centers_im = draw_points(score1_crop, objects, radius=2)
+        cv2.imwrite('debug/centers_left.jpg', centers_im)
 
     logging.debug('Counting right score..')
     image = Image.fromarray(score2_crop).convert('L')
@@ -202,7 +207,12 @@ def get_score(image):
     if DEBUG:
         scipy.misc.imsave('debug/right_score_blocks_black_white.jpg', bw_image)
 
-    data['rightScore'] = find_score_from_image(bw_image)
+    objects = find_object_centers(bw_image)
+    data['rightScore'] = find_score(objects)
+
+    if DEBUG:
+        centers_im = draw_points(score2_crop, objects, radius=2)
+        cv2.imwrite('debug/centers_right.jpg', centers_im)
 
     return data
 
@@ -358,7 +368,7 @@ def find_table_ends(points):
     return ends
 
 
-def find_score_from_image(image):
+def find_object_centers(image):
     """Find score from black and white image.
 
     Image should contain 12 white dots placed from left to right.
@@ -390,7 +400,7 @@ def find_score_from_image(image):
         err += 'Expected 12, but found %s' % len(objects)
         raise ValueError(err)
 
-    return find_score(objects)
+    return objects
 
 
 def crop_boxes(image, boxes):
@@ -483,14 +493,14 @@ def rotate_image(image, angle, rotation_point=(0, 0)):
     return result
 
 
-def draw_points(image, points):
+def draw_points(image, points, radius=3):
     """Draws points to a given image. Returns copy of image, original is not
     modified.
     """
     im = image.copy()
 
     for point in points:
-        cv2.circle(im, tuple(point), 3, (0, 0, 255), 3)
+        cv2.circle(im, tuple(point), radius, (0, 0, 255), radius)
 
     return im
 
