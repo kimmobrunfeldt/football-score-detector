@@ -64,5 +64,6 @@ mkdir giftemp
 cp *.jpg giftemp
 
 convert -quality 100 -delay 40 -loop 0 giftemp/testdata.jpg giftemp/large.jpg giftemp/found_blue.jpg giftemp/found_corners.jpg giftemp/lower_long_side.jpg giftemp/large_straight.jpg giftemp/corner_a.jpg giftemp/corner_b.jpg giftemp/corner_c.jpg giftemp/corner_d.jpg giftemp/corner_labels.jpg giftemp/table_middle.jpg giftemp/table_middles_of_middle.jpg giftemp/table_middles_of_middle_add.jpg giftemp/table_score_box.jpg giftemp/left_score_blocks.jpg giftemp/left_score_blocks_black_white.jpg giftemp/centers_left.jpg giftemp/left_score.jpg giftemp/right_score_blocks.jpg giftemp/right_score_blocks_black_white.jpg giftemp/centers_right.jpg giftemp/right_score.jpg algorithm.gif
+convert -quality 100 algorithm.gif \( -clone 0 -set delay 250 \) -swap 0 +delete \( +clone -set delay 150 \) +swap +delete algorithm.gif
 
 rm -r giftemp
