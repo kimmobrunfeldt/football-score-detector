@@ -197,6 +197,8 @@ def get_score(image):
         centers_im = draw_points(score1_crop, objects, radius=2)
         cv2.imwrite('debug/centers_left.jpg', centers_im)
 
+        create_score_image(data['leftScore'], 'left')
+
     logging.debug('Counting right score..')
     image = Image.fromarray(score2_crop).convert('L')
     image = np.array(image, dtype=int)
@@ -213,6 +215,8 @@ def get_score(image):
     if DEBUG:
         centers_im = draw_points(score2_crop, objects, radius=2)
         cv2.imwrite('debug/centers_right.jpg', centers_im)
+
+        create_score_image(data['rightScore'], 'right')
 
     return data
 
@@ -505,14 +509,13 @@ def draw_points(image, points, radius=3):
     return im
 
 
-def draw_label(image, point, label, font=cv2.FONT_HERSHEY_SIMPLEX):
+def draw_label(image, point, label, font=cv2.FONT_HERSHEY_SIMPLEX,
+               font_scale=3, thickness=2):
     """Draws label for point to a given image.
     Returns copy of image, original is not modified.
     """
     im = image.copy()
 
-    font_scale = 3
-    thickness = 2
     # http://docs.opencv.org/modules/core/doc/drawing_functions.html#gettextsize
     # Returns bounding box and baseline -> ((width, height), baseline)
     size = cv2.getTextSize(label, font, font_scale, thickness)[0]
@@ -536,6 +539,12 @@ def draw_lines(image, lines):
         cv2.line(im, p1, p2, (0, 0, 255), 3)
 
     return im
+
+
+def create_score_image(score, side):
+    blank_image = np.zeros((40, 200, 3), np.uint8)
+    text_im = draw_label(blank_image, (100, 32), str(score), font_scale=0.85)
+    cv2.imwrite('debug/%s_score.jpg' % side, text_im)
 
 # Generic math functions
 

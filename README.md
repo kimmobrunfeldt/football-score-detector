@@ -38,34 +38,37 @@ We have a blue football table which has score "boards" for both players. Left sc
 
 Goal is to count score for each player based on the score blocks' positions. In the example image left score is 1 and right score is 3.
 
-#### Algorithm
+## Algorithm
 
-1. **Place original image on a larger 'canvas' so that OpenCV can rotate original image without cutting edges**
+### **1. Place original image on a larger 'canvas'**
+
+    This will prevent OpenCV from cutting image edges when rotating.
 
     ![](docs/algorithm/large.jpg)
 
-2. **Rotate image so that table is straight**
+### **2. Rotate image so that table is straight**
 
     This contains a few steps
 
-    1. (Frame 2) Find blue table
-    2. (Frame 3) Find corners from the image
-    3. (Frame 4) Calculate the lower long side of table of corner points
-    4. (Frame 5) Rotate image with the to straighten the found line
+    1. Take the canvas
+    2. Find blue table with HSV threshold for blue hue
+    3. Find table corners from the binary(black and white) image
+    4. Calculate the lower long side of table of corner points
+    5. Rotate image with the found line to straighten table
 
     ![](docs/algorithm/straighten_table.gif)
 
-3. **Label table corners**
+### **3. Label table corners**
 
     Since the table is straightened, ordering corner points to top left, bottom left .. etc. is possible.
 
     ![](docs/algorithm/label_corners.gif)
 
-4. **Find short table ends and score blocks based on them**
+### **4. Find short table ends and score blocks based on them**
 
     ![](docs/algorithm/find_score_blocks.gif)
 
-5. **Crop and rotate score blocks. Then apply threshold to images**
+### **5. Crop and rotate score blocks. Then apply threshold to images**
 
     Left score blocks. HSV threshold for orange hue is applied.
 
@@ -77,7 +80,7 @@ Goal is to count score for each player based on the score blocks' positions. In 
 
     The outermost blocks are not actual score blocks. They are blocks which hold the actual score blocks in place.
 
-6. **Calculate score from score block images**
+### **6. Calculate score from score block images**
 
     Find separate objects and their centers from black and white image
 
@@ -85,5 +88,7 @@ Goal is to count score for each player based on the score blocks' positions. In 
 
     Now that we have 12 center coordinates for objects, we can find where the biggest gap between blocks is. From that information it is possible to count score.
 
+### All combined
 
+![](docs/algorithm/algorithm.gif)
 

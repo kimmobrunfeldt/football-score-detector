@@ -27,7 +27,7 @@ rm -r giftemp
 mkdir giftemp
 cp corner_a.jpg corner_b.jpg corner_c.jpg corner_d.jpg corner_labels.jpg giftemp
 
-convert -quality 100 -delay 140 -loop 0 corner_a.jpg corner_b.jpg corner_c.jpg corner_d.jpg corner_labels.jpg label_corners.gif
+convert -quality 100 -delay 140 -loop 0 giftemp/corner_a.jpg giftemp/corner_b.jpg giftemp/corner_c.jpg giftemp/corner_d.jpg giftemp/corner_labels.jpg label_corners.gif
 convert -quality 100 label_corners.gif \( -clone 0 -set delay 250 \) -swap 0 +delete \( +clone -set delay 250 \) +swap +delete label_corners.gif
 
 rm -r giftemp
@@ -36,7 +36,7 @@ rm -r giftemp
 mkdir giftemp
 cp table_ends.jpg table_middle.jpg table_middles_of_middle.jpg table_middles_of_middle_add.jpg table_score_box.jpg giftemp
 
-convert -quality 100 -delay 140 -loop 0 table_ends.jpg table_middle.jpg table_middles_of_middle.jpg table_middles_of_middle_add.jpg table_score_box.jpg find_score_blocks.gif
+convert -quality 100 -delay 140 -loop 0 table_ends.jpg giftemp/table_middle.jpg giftemp/table_middles_of_middle.jpg giftemp/table_middles_of_middle_add.jpg giftemp/table_score_box.jpg find_score_blocks.gif
 convert -quality 100 find_score_blocks.gif \( -clone 0 -set delay 250 \) -swap 0 +delete \( +clone -set delay 250 \) +swap +delete find_score_blocks.gif
 
 rm -r giftemp
@@ -46,7 +46,7 @@ rm -r giftemp
 mkdir giftemp
 cp left_score_blocks.jpg left_score_blocks_black_white.jpg giftemp
 
-convert -quality 100 -delay 140 -loop 0 left_score_blocks.jpg left_score_blocks_black_white.jpg left_threshold.gif
+convert -quality 100 -delay 140 -loop 0 giftemp/left_score_blocks.jpg giftemp/left_score_blocks_black_white.jpg left_threshold.gif
 
 rm -r giftemp
 
@@ -54,6 +54,15 @@ rm -r giftemp
 mkdir giftemp
 cp right_score_blocks.jpg right_score_blocks_black_white.jpg giftemp
 
-convert -quality 100 -delay 140 -loop 0 right_score_blocks.jpg right_score_blocks_black_white.jpg right_threshold.gif
+convert -quality 100 -delay 140 -loop 0 giftemp/right_score_blocks.jpg giftemp/right_score_blocks_black_white.jpg right_threshold.gif
+
+rm -r giftemp
+
+
+# Create total animation
+mkdir giftemp
+cp *.jpg giftemp
+
+convert -quality 100 -delay 40 -loop 0 giftemp/testdata.jpg giftemp/large.jpg giftemp/found_blue.jpg giftemp/found_corners.jpg giftemp/lower_long_side.jpg giftemp/large_straight.jpg giftemp/corner_a.jpg giftemp/corner_b.jpg giftemp/corner_c.jpg giftemp/corner_d.jpg giftemp/corner_labels.jpg giftemp/table_middle.jpg giftemp/table_middles_of_middle.jpg giftemp/table_middles_of_middle_add.jpg giftemp/table_score_box.jpg giftemp/left_score_blocks.jpg giftemp/left_score_blocks_black_white.jpg giftemp/centers_left.jpg giftemp/left_score.jpg giftemp/right_score_blocks.jpg giftemp/right_score_blocks_black_white.jpg giftemp/centers_right.jpg giftemp/right_score.jpg algorithm.gif
 
 rm -r giftemp
