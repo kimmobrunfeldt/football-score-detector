@@ -1,6 +1,6 @@
 # Football score detector
 
-The program analyzes picture of a table football game
+The program analyzes picture of our office's table football game
 
 ![table](docs/table.jpg)
 
@@ -12,19 +12,6 @@ and outputs the score as JSON
   "rightScore": 3
 }
 ```
-
-## Install
-
-You need Python and a few **dependencies:**
-
-- OpenCV >= 2.4.4
-- Numpy
-- Scipy
-
-These might be tricky to install. I created new Ubuntu 13.10 vagrant box and installed dependencies with apt-get:
-
-    sudo apt-get install git python-opencv python-pip python-scipy
-
 
 ## How it works
 
@@ -90,5 +77,19 @@ Now that we have 12 center coordinates for objects, we can find where the bigges
 
 ### All combined
 
-![](docs/algorithm/algorithm.gif)
+<p align="center">
+  <img src="https://github.com/kimmobrunfeldt/football-score-detector/blob/master/docs/algorithm/algorithm.gif?raw=true" alt=""/>
+</p>
+
+## Install
+
+You need Python and a few **dependencies:**
+
+- OpenCV >= 2.4.4
+- Numpy
+- Scipy
+
+These might be tricky to install. I created new Ubuntu 13.10 vagrant box and installed dependencies with apt-get:
+
+    sudo apt-get install git python-opencv python-pip python-scipy
 
