@@ -65,18 +65,13 @@ Goal is to count score for each player based on the score blocks' positions. In 
 
     ![](docs/algorithm/find_score_blocks.gif)
 
-5. Crop and rotate score blocks
+5. Crop and rotate score blocks. Then apply threshold to images
 
     Left score blocks
 
-    ![](docs/algorithm/left_score_blocks.jpg)
+    ![](docs/algorithm/left_threshold.gif)
 
     Right score blocks
 
-    ![](docs/algorithm/right_score_blocks.jpg)
-
-
-
-
-
+    ![](docs/algorithm/right_threshold.gif)
 
