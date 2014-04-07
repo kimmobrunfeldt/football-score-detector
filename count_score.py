@@ -197,7 +197,7 @@ def get_score(image):
         centers_im = draw_points(score1_crop, objects, radius=2)
         cv2.imwrite('debug/centers_left.jpg', centers_im)
 
-        create_score_image(data['leftScore'], 'left')
+        create_text_image('debug/left_score.jpg', 'Left: %s' % data['leftScore'])
 
     logging.debug('Counting right score..')
     image = Image.fromarray(score2_crop).convert('L')
@@ -216,7 +216,7 @@ def get_score(image):
         centers_im = draw_points(score2_crop, objects, radius=2)
         cv2.imwrite('debug/centers_right.jpg', centers_im)
 
-        create_score_image(data['rightScore'], 'right')
+        create_text_image('debug/right_score.jpg', 'Right: %s' % data['rightScore'])
 
     return data
 
@@ -541,10 +541,10 @@ def draw_lines(image, lines):
     return im
 
 
-def create_score_image(score, side):
+def create_text_image(path, text):
     blank_image = np.zeros((40, 200, 3), np.uint8)
-    text_im = draw_label(blank_image, (100, 32), str(score), font_scale=0.85)
-    cv2.imwrite('debug/%s_score.jpg' % side, text_im)
+    text_im = draw_label(blank_image, (100, 32), text, font_scale=0.85)
+    cv2.imwrite(path, text_im)
 
 # Generic math functions
 

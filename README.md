@@ -1,10 +1,10 @@
 # Football score detector
 
-The program analyzes this picture
+The program analyzes picture of a table football game
 
 ![table](docs/table.jpg)
 
-and outputs following JSON
+and outputs the score as JSON
 
 ```json
 {
